@@ -31,7 +31,6 @@ fn compile_expr(e : &Expr, cmds : &mut Vec<String>) {
       compile_expr(&subexpr, cmds);
       cmds.push(String::from("sub rax, 1"));
     }
-    _ => panic!("unknown")
   }
 }
 
@@ -42,12 +41,7 @@ fn compile(e : &Expr) -> Vec<String> {
 }
 
 fn main() {
-  let s : Sexp = parse("99").unwrap();
-  if let Sexp::Atom(I(n)) = s {
-    println!("{n}")
-  };
-
-  let expr = parse_expr(&parse("(add1 5)").unwrap());
+  let expr = parse_expr(&parse("(add1 (sub1 (add1 73)))").unwrap());
   let result = compile(&expr);
 
   println!("{}", result.iter().map(|e| { e.to_string() }).collect::<Vec<_>>().join("\n"));
