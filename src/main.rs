@@ -22,21 +22,21 @@ fn parse_expr(s : &Sexp) -> Expr {
 
 fn compile_expr(e : &Expr, cmds : &mut Vec<String>) {
   match e {
-    Expr::Num(n) => cmds.push("mov rax, {n}"),
+    Expr::Num(n) => cmds.push(format!("mov rax, {n}")),
     Expr::Add1(subexpr) => {
       compile_expr(&subexpr, cmds);
-      cmds.push("add rax, 1");
+      cmds.push(String::from("add rax, 1"));
     },
     Expr::Sub1(subexpr) => {
       compile_expr(&subexpr, cmds);
-      cmds.push("sub rax, 1");
+      cmds.push(String::from("sub rax, 1"));
     }
     _ => panic!("unknown")
   }
 }
 
-fn compile(e : &Expr) -> Vec<&str> {
-  let mut v : Vec<&str> = Vec::new();
+fn compile(e : &Expr) -> Vec<String> {
+  let mut v : Vec<String> = Vec::new();
   compile_expr(e, &mut v);
   v
 }
