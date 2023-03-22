@@ -9,3 +9,10 @@ Idea is to dump the code into a .s file, then:
 Basically a Rust port of https://github.com/compilers-course-materials/inlab1
 
 `src/main.rs` has the parser/compiler
+
+On my M1 mac had to do:
+
+```
+→ rustup target add x86_64-apple-darwin
+→ rustc --target=x86_64-apple-darwin -L build/ lib/start.rs
+```
