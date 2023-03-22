@@ -16,3 +16,5 @@ On my M1 mac had to do:
 → rustup target add x86_64-apple-darwin
 → rustc --target=x86_64-apple-darwin -L build/ lib/start.rs
 ```
+
+The resulting binary seemed to work fine thanks to Rosetta with just ./start
