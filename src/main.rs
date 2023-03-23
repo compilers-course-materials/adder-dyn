@@ -81,7 +81,9 @@ fn main() {
   let start = ops.offset();
 
   jit_expr(&expr, &mut ops);
-  dynasm!(ops; ret);
+  dynasm!(ops
+    ; .arch x64
+    ; ret);
   let buf = ops.finalize().unwrap();
   let jitted_fn : extern fn() -> i32 = unsafe { mem::transmute(buf.ptr(start)) };
 
