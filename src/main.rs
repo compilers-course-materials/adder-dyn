@@ -146,8 +146,8 @@ fn main() -> std::io::Result<()> {
   let result = compile_expr(&expr);
   let asm_program = format!("
 section .text
-global _our_code_starts_here
-_our_code_starts_here:
+global our_code_starts_here
+our_code_starts_here:
   {}
   ret
 ", result);
