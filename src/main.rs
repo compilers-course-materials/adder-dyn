@@ -1,6 +1,9 @@
 use dynasmrt::{dynasm, DynasmApi, DynasmLabelApi};
 
 use std::mem;
+use std::fs::File;
+use std::env;
+use std::io::prelude::*;
 
 use sexp::*;
 use sexp::Atom::*;
@@ -95,62 +98,62 @@ fn instrs_to_asm(cmds : &Vec<Instr>, ops : &mut dynasmrt::x64::Assembler) {
   cmds.iter().for_each(|c| { instr_to_asm(c, ops) })
 }
 
-fn jit_expr(e : &Expr, ops : &mut dynasmrt::x64::Assembler) {
-  match e {
-    Expr::Num(n) => {
-      dynasm!(ops
-        ; .arch x64
-        ; mov rax, DWORD *n
-      );
-    }
-    Expr::Add1(subexpr) => {
-      jit_expr(&subexpr, ops);
-      dynasm!(ops
-        ; .arch x64
-        ; add rax, DWORD 1
-      );
-    },
-    Expr::Sub1(subexpr) => {
-      jit_expr(&subexpr, ops);
-      dynasm!(ops
-        ; .arch x64
-        ; sub rax, DWORD 1
-      );
-    }
-  }
-}
-
-fn compile_expr(e : &Expr, cmds : &mut Vec<Instr>) {
+fn compile_expr_instrs(e : &Expr, cmds : &mut Vec<Instr>) {
   match e {
     Expr::Num(n) => cmds.push(Instr::IMov(Reg(RAX), Imm(*n))),
     Expr::Add1(subexpr) => {
-      compile_expr(&subexpr, cmds);
+      compile_expr_instrs(&subexpr, cmds);
       cmds.push(Instr::IAdd(Reg(RAX), Imm(1)))
     },
     Expr::Sub1(subexpr) => {
-      compile_expr(&subexpr, cmds);
+      compile_expr_instrs(&subexpr, cmds);
       cmds.push(Instr::ISub(Reg(RAX), Imm(1)))
     }
   }
 }
 
+fn compile_expr(e : &Expr) -> String {
+  match e {
+    Expr::Num(n) => format!("mov rax, {}", *n),
+    Expr::Add1(subexpr) => compile_expr(subexpr) + "\nadd rax, 1",
+    Expr::Sub1(subexpr) => compile_expr(subexpr) + "\nsub rax, 1"
+  }
+}
+
 fn compile_to_instrs(e : &Expr) -> Vec<Instr> {
   let mut v : Vec<Instr> = Vec::new();
-  compile_expr(e, &mut v);
+  compile_expr_instrs(e, &mut v);
   return v;
 }
 
 fn compile(e : &Expr) -> String {
   let mut v : Vec<Instr> = Vec::new();
-  compile_expr(e, &mut v);
+  compile_expr_instrs(e, &mut v);
   return instrs_to_str(&v)
 }
 
-fn main() {
-  let expr = parse_expr(&parse("(add1 (sub1 (add1 73)))").unwrap());
-  let result = compile(&expr);
+fn main() -> std::io::Result<()> {
+  let args: Vec<String> = env::args().collect();
 
-  println!("{}", result);
+  let in_name = &args[1];
+  let out_name = &args[2];
+
+  let mut in_file = File::open(in_name)?;
+  let mut in_contents = String::new();
+  in_file.read_to_string(&mut in_contents)?;
+
+  let expr = parse_expr(&parse(&in_contents).unwrap());
+  let result = compile_expr(&expr);
+  let asm_program = format!("
+section .text
+global _our_code_starts_here
+_our_code_starts_here:
+  {}
+  ret
+", result);
+
+  let mut out_file = File::create(out_name)?;
+  out_file.write_all(asm_program.as_bytes())?;
 
   let instrs = compile_to_instrs(&expr);
 
@@ -165,6 +168,8 @@ fn main() {
   let buf = ops.finalize().unwrap();
   let jitted_fn : extern fn() -> i32 = unsafe { mem::transmute(buf.ptr(start)) };
 
-  println!("{}", jitted_fn());
- 
+  println!("Generated assembly:\n{}", asm_program);
+  println!("Evaluates to:\n{}", jitted_fn());
+
+  Ok(())
 }
