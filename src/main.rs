@@ -1,4 +1,4 @@
-use dynasmrt::{dynasm, DynasmApi, DynasmLabelApi};
+use dynasmrt::{dynasm, DynasmApi};
 
 use std::env;
 use std::fs::File;
@@ -114,24 +114,10 @@ fn compile_expr_instrs(e: &Expr, cmds: &mut Vec<Instr>) {
     }
 }
 
-fn compile_expr(e: &Expr) -> String {
-    match e {
-        Expr::Num(n) => format!("mov rax, {}", *n),
-        Expr::Add1(subexpr) => compile_expr(subexpr) + "\nadd rax, 1",
-        Expr::Sub1(subexpr) => compile_expr(subexpr) + "\nsub rax, 1",
-    }
-}
-
 fn compile_to_instrs(e: &Expr) -> Vec<Instr> {
     let mut v: Vec<Instr> = Vec::new();
     compile_expr_instrs(e, &mut v);
     return v;
-}
-
-fn compile(e: &Expr) -> String {
-    let mut v: Vec<Instr> = Vec::new();
-    compile_expr_instrs(e, &mut v);
-    return instrs_to_str(&v);
 }
 
 fn main() -> std::io::Result<()> {
@@ -145,7 +131,8 @@ fn main() -> std::io::Result<()> {
     in_file.read_to_string(&mut in_contents)?;
 
     let expr = parse_expr(&parse(&in_contents).unwrap());
-    let result = compile_expr(&expr);
+    let instrs = compile_to_instrs(&expr);
+    let result = instrs_to_str(&instrs);
     let asm_program = format!(
         "
 section .text
@@ -159,8 +146,6 @@ our_code_starts_here:
 
     let mut out_file = File::create(out_name)?;
     out_file.write_all(asm_program.as_bytes())?;
-
-    let instrs = compile_to_instrs(&expr);
 
     let mut ops = dynasmrt::x64::Assembler::new().unwrap();
     let start = ops.offset();
